@@ -25,7 +25,6 @@ defmodule AdventOfCode2020 do
     policies_with_passwords
     |> parse_password_lines()
     |> Enum.map(fn {min, max, letter, password} ->
-
       occurrencies =
         password
         |> String.codepoints()
@@ -73,4 +72,107 @@ defmodule AdventOfCode2020 do
     end)
   end
 
+  @doc """
+  Traverse the forest (that has a repeatable pattern) looking for trees.
+
+  It does in a way that always walk to the south in diagonal, counting
+  the trees that finds in the way.
+
+  ## Example
+
+      iex> forest = ~s(..##.......
+      iex> #...#...#..
+      iex> .#....#..#.
+      iex> ..#.#...#.#
+      iex> .#...##..#.
+      iex> ..#.##.....
+      iex> .#.#.#....#
+      iex> .#........#
+      iex> #.##...#...
+      iex> #...##....#
+      iex> .#..#...#.#)
+      iex> AdventOfCode2020.tobogan_trajectory(forest)
+      7
+      iex> AdventOfCode2020.tobogan_trajectory(forest, [right: 1, down: 1])
+      2
+      iex> AdventOfCode2020.tobogan_trajectory(forest, [right: 5, down: 1])
+      3
+      iex> AdventOfCode2020.tobogan_trajectory(forest, [right: 7, down: 1])
+      4
+      iex> AdventOfCode2020.tobogan_trajectory(forest, [right: 1, down: 2])
+      2
+
+  """
+  def tobogan_trajectory(forest, opts \\ []) do
+    opts = Keyword.merge([right: 3, down: 1], opts)
+
+    forest
+    |> String.split("\n", trim: true)
+    |> Enum.map(fn str ->
+      str
+      |> String.replace(~r/[\s->]+/, "")
+      |> String.codepoints()
+      |> Stream.cycle()
+    end)
+    |> read_map(0, 0, 0, opts)
+  end
+
+  defp read_map(lines, row, _col, trees, _opts) when row > length(lines) - 1, do: trees
+
+  defp read_map(lines, row, col, trees, opts) do
+    row = row + Keyword.fetch!(opts, :down)
+    col = col + Keyword.fetch!(opts, :right)
+
+    line = Enum.at(lines, row)
+    maybe_tree = line && Enum.at(line, col)
+
+    trees =
+      if maybe_tree == "#" do
+        trees + 1
+      else
+        trees
+      end
+
+    read_map(lines, row, col, trees, opts)
+  end
+
+  @doc """
+  Traverse the forest trying different slopes and multiply the number of trees.
+
+  It does in a way that always walk to the south in diagonal, counting
+  the trees that finds in the way. Again, the pattern repeats.
+
+  The slopes define the way it will be traversed, from left-up to right-bottom.
+
+  ## Example
+
+      iex> forest = ~s(..##.......
+      iex> #...#...#..
+      iex> .#....#..#.
+      iex> ..#.#...#.#
+      iex> .#...##..#.
+      iex> ..#.##.....
+      iex> .#.#.#....#
+      iex> .#........#
+      iex> #.##...#...
+      iex> #...##....#
+      iex> .#..#...#.#)
+      iex> slopes = [[right: 1], [right: 3], [right: 5], [right: 7], [right: 1, down: 2]]
+      iex> AdventOfCode2020.multiply_tobogan_trajectories_slopes_trees(forest, slopes)
+      336
+
+  """
+  def multiply_tobogan_trajectories_slopes_trees(forest, slopes) do
+    slopes
+    |> Enum.map(fn slope ->
+      tobogan_trajectory(forest, slope)
+    end)
+    |> Enum.reduce(fn
+      trees, nil ->
+        trees
+
+      trees, total ->
+        trees * total
+    end)
+  end
 end
